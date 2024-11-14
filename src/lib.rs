@@ -1,3 +1,5 @@
+//! Directory Iterator
+
 #![allow(dead_code)]
 
 #[cfg(test)]
@@ -5,18 +7,21 @@ mod test;
 
 use std::*;
 
+/// Used to filter flattened `DirIterator` with wildcards
 #[cfg(feature = "wildcard")]
 pub fn wildcard(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
     let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
     move |entry| wildcard.is_match(entry.file_name().as_encoded_bytes())
 }
 
+/// scan a directory recursively and access with iterator
 pub struct DirIterator {
-    // stack representing the current directory dive
+    /// stack representing the current directory dive
     stack: Vec<fs::ReadDir>,
 }
 
 impl DirIterator {
+    /// Create new iterator from a `path` to scan in
     pub fn new(path: impl AsRef<path::Path>) -> Result<Self, io::Error> {
         Ok(Self {
             stack: vec![fs::read_dir(path)?],

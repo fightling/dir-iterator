@@ -2,6 +2,13 @@
 name = "dir-iterator"
 version = "0.1.0"
 edition = "2021"
+authors = ["Patrick Hoffmann fightling@elektropost.org>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/fightling/dir-iterator"
+description = "Iterator that recursively scans and filters files from a directory"
+readme = "README.md"
+documentation = "https://docs.rs/dir-iterator"
+keywords = ["dir", "directory", "iterator"]
 
 [lib]
 path = "src/lib.rs"

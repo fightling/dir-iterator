@@ -1,17 +1,23 @@
+#![allow(dead_code)]
+
+#[cfg(test)]
+mod test;
+
 use std::*;
+use wc::Wildcard;
 
-fn main() {
-    let it = DirIterator::try_new(".").expect("path not found");
-
-    it.for_each(|entry| println!("{}", entry.unwrap().file_name().to_string_lossy()));
+pub fn wildcard(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
+    let wildcard = Wildcard::new(wildcard.as_bytes()).unwrap();
+    move |entry| wildcard.is_match(entry.file_name().as_encoded_bytes())
 }
 
-struct DirIterator {
+pub struct DirIterator {
+    // stack representing the current directory dive
     stack: Vec<fs::ReadDir>,
 }
 
 impl DirIterator {
-    fn try_new(path: impl AsRef<path::Path>) -> Result<Self, io::Error> {
+    pub fn new(path: impl AsRef<path::Path>) -> Result<Self, io::Error> {
         Ok(Self {
             stack: vec![fs::read_dir(path)?],
         })

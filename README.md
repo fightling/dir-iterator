@@ -19,7 +19,7 @@ use dir_iterator::*
 
 fn main() {
     // create a new iterator starting in the current directory 
-    DirIterator::new(".")
+    DirIterator::new()
         // you will get this error if path was not found
         .expect("path not found")
         // while processing recursive dive multiple file system errors may occur.
@@ -36,7 +36,7 @@ fn main() {
 use dir_iterator::*
 
 fn main() {
-    DirIterator::new(".")
+    DirIterator::new()
         .expect("path not found")
         .flatten()
         // filter all files which have extension `txt`

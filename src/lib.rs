@@ -15,17 +15,16 @@ pub fn wildcard(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
 }
 
 /// scan a directory recursively and access with iterator
-pub struct DirIterator {
-    /// stack representing the current directory dive
-    stack: Vec<fs::ReadDir>,
-}
+pub struct DirIterator(Vec<fs::ReadDir>);
 
 impl DirIterator {
-    /// Create new iterator from a `path` to scan in
-    pub fn new(path: impl AsRef<path::Path>) -> Result<Self, io::Error> {
-        Ok(Self {
-            stack: vec![fs::read_dir(path)?],
-        })
+    /// Scan current directory and return result as iterator
+    pub fn new() -> Result<Self, io::Error> {
+        Ok(Self(vec![fs::read_dir(env::current_dir()?)?]))
+    }
+    /// Scan given `path`` and return result as iterator
+    pub fn from_path(path: impl AsRef<path::Path>) -> Result<Self, io::Error> {
+        Ok(Self(vec![fs::read_dir(path)?]))
     }
 }
 
@@ -33,22 +32,23 @@ impl Iterator for DirIterator {
     type Item = Result<fs::DirEntry, io::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let stack = &mut self.0;
         loop {
-            if let Some(it) = self.stack.last_mut() {
+            if let Some(it) = stack.last_mut() {
                 match it.next() {
                     Some(Ok(entry)) => match entry.file_type() {
                         Ok(file_type) => {
                             if file_type.is_file() {
                                 return Some(Ok(entry));
                             } else {
-                                self.stack.push(fs::read_dir(entry.path()).expect(""))
+                                stack.push(fs::read_dir(entry.path()).expect(""))
                             }
                         }
                         Err(err) => return Some(Err(err)),
                     },
                     Some(Err(err)) => panic!("{err}"),
                     None => {
-                        self.stack.pop()?;
+                        stack.pop()?;
                     }
                 }
             } else {

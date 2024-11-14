@@ -12,6 +12,7 @@ fn read_dir() {
     );
 }
 
+#[cfg(feature = "wildcard")]
 #[test]
 fn filter_dir() {
     use super::*;

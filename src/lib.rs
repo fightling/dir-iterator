@@ -4,10 +4,10 @@
 mod test;
 
 use std::*;
-use wc::Wildcard;
 
+#[cfg(feature = "wildcard")]
 pub fn wildcard(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
-    let wildcard = Wildcard::new(wildcard.as_bytes()).unwrap();
+    let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
     move |entry| wildcard.is_match(entry.file_name().as_encoded_bytes())
 }
 

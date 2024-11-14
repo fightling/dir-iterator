@@ -43,3 +43,20 @@ fn filter_dir() {
         ["test.rs"],
     );
 }
+
+#[test]
+fn read_paths() {
+    use super::*;
+
+    let cur = env::current_dir().unwrap();
+    let files = DirIterator::new()
+        .expect("path not found")
+        .flatten()
+        .map(|e| e.path())
+        .collect::<Vec<_>>();
+
+    assert!(files.contains(&cur.join("src/test.rs")));
+    assert!(files.contains(&cur.join("src/lib.rs")));
+    assert!(files.contains(&cur.join("Cargo.toml")));
+    assert!(files.contains(&cur.join("README.md")));
+}

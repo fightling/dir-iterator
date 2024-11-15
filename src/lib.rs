@@ -71,10 +71,10 @@ impl Iterator for DirIterator {
                         }
                         Err(err) => return Some(Err(err)),
                     },
-                    Some(Err(err)) => panic!("{err}"),
                     None => {
                         stack.pop()?;
                     }
+                    err => return err,
                 }
             } else {
                 return None;

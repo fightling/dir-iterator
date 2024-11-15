@@ -9,13 +9,13 @@ use std::*;
 
 /// Used to filter flattened `DirIterator` with wildcards
 #[cfg(feature = "wildcard")]
-pub fn wildcard(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
+pub fn wildcard(wildcard: &'static str) -> impl Fn(&fs::DirEntry) -> bool {
     let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
     move |entry| wildcard.is_match(entry.file_name().as_encoded_bytes())
 }
 
 #[cfg(feature = "wildcard")]
-pub fn exclude(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
+pub fn exclude(wildcard: &'static str) -> impl Fn(&fs::DirEntry) -> bool {
     let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
     move |entry| !wildcard.is_match(entry.file_name().as_encoded_bytes())
 }

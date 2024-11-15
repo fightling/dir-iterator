@@ -14,6 +14,28 @@ pub fn wildcard(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
     move |entry| wildcard.is_match(entry.file_name().as_encoded_bytes())
 }
 
+#[cfg(feature = "wildcard")]
+pub fn exclude(wildcard: &'static str) -> impl FnMut(&fs::DirEntry) -> bool {
+    let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
+    move |entry| !wildcard.is_match(entry.file_name().as_encoded_bytes())
+}
+
+pub fn files(entry: &fs::DirEntry) -> bool {
+    if let Ok(file_type) = entry.file_type() {
+        file_type.is_file()
+    } else {
+        false
+    }
+}
+
+pub fn dirs(entry: &fs::DirEntry) -> bool {
+    if let Ok(file_type) = entry.file_type() {
+        file_type.is_dir()
+    } else {
+        false
+    }
+}
+
 /// scan a directory recursively and access with iterator
 pub struct DirIterator(Vec<fs::ReadDir>);
 
@@ -38,11 +60,10 @@ impl Iterator for DirIterator {
                 match it.next() {
                     Some(Ok(entry)) => match entry.file_type() {
                         Ok(file_type) => {
-                            if file_type.is_file() {
-                                return Some(Ok(entry));
-                            } else {
+                            if file_type.is_dir() {
                                 stack.push(fs::read_dir(entry.path()).expect(""))
                             }
+                            return Some(Ok(entry));
                         }
                         Err(err) => return Some(Err(err)),
                     },

@@ -5,7 +5,7 @@ fn read_cur() {
     let files = DirIterator::new()
         .expect("path not found")
         .flatten()
-        .map(|e| e.file_name().as_os_str().to_string_lossy().to_string())
+        .map(|e| e.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
 
     assert!(files.contains(&"test.rs".to_string()));
@@ -38,7 +38,7 @@ fn filter_dir() {
             .expect("path not found")
             .flatten()
             .filter(wildcard("test.*"))
-            .map(|e| e.file_name().as_os_str().to_string_lossy().to_string())
+            .map(|e| e.file_name().to_string_lossy().to_string())
             .collect::<Vec<_>>(),
         ["test.rs"],
     );
@@ -59,4 +59,17 @@ fn read_paths() {
     assert!(files.contains(&cur.join("src/lib.rs")));
     assert!(files.contains(&cur.join("Cargo.toml")));
     assert!(files.contains(&cur.join("README.md")));
+}
+
+#[test]
+fn filter_dirs() {
+    use super::*;
+
+    assert!(DirIterator::new()
+        .expect("path not found")
+        .flatten()
+        .filter(dirs)
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .contains(&".github".to_string()));
 }

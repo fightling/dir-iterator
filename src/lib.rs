@@ -60,8 +60,12 @@ impl Iterator for DirIterator {
                 match it.next() {
                     Some(Ok(entry)) => match entry.file_type() {
                         Ok(file_type) => {
+                            // Push new item on stack when the file entry is a directory
                             if file_type.is_dir() {
-                                stack.push(fs::read_dir(entry.path()).expect(""))
+                                match fs::read_dir(entry.path()) {
+                                    Ok(dir_entry) => stack.push(dir_entry),
+                                    Err(err) => return Some(Err(err)),
+                                }
                             }
                             return Some(Ok(entry));
                         }

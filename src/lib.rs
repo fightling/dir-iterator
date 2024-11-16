@@ -2,77 +2,79 @@
 
 #![allow(dead_code)]
 
+mod filter;
 #[cfg(test)]
 mod test;
 
+use fs::DirEntry;
 use std::*;
 
-/// Used to filter flattened `DirIterator` with wildcards
-#[cfg(feature = "wildcard")]
-pub fn wildcard(wildcard: &'static str) -> impl Fn(&fs::DirEntry) -> bool {
-    let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
-    move |entry| wildcard.is_match(entry.file_name().as_encoded_bytes())
-}
-
-#[cfg(feature = "wildcard")]
-pub fn exclude(wildcard: &'static str) -> impl Fn(&fs::DirEntry) -> bool {
-    let wildcard = wc::Wildcard::new(wildcard.as_bytes()).unwrap();
-    move |entry| !wildcard.is_match(entry.file_name().as_encoded_bytes())
-}
-
-pub fn files(entry: &fs::DirEntry) -> bool {
-    if let Ok(file_type) = entry.file_type() {
-        file_type.is_file()
-    } else {
-        false
-    }
-}
-
-pub fn dirs(entry: &fs::DirEntry) -> bool {
-    if let Ok(file_type) = entry.file_type() {
-        file_type.is_dir()
-    } else {
-        false
-    }
-}
+/// We deal with std::io::Error
+type Result<T> = std::io::Result<T>;
 
 /// scan a directory recursively and access with iterator
-pub struct DirIterator(Vec<fs::ReadDir>);
+pub struct DirIterator {
+    /// current subdirectory (last is current folder)
+    stack: Vec<fs::ReadDir>,
+    /// configuration
+    config: DirIteratorConfig,
+}
 
 impl DirIterator {
     /// Scan current directory and return result as iterator
-    pub fn new() -> Result<Self, io::Error> {
-        Ok(Self(vec![fs::read_dir(env::current_dir()?)?]))
+    pub fn current() -> Result<DirIteratorBuilder> {
+        Ok(Self::from_path(env::current_dir()?))
     }
+
     /// Scan given `path`` and return result as iterator
-    pub fn from_path(path: impl AsRef<path::Path>) -> Result<Self, io::Error> {
-        Ok(Self(vec![fs::read_dir(path)?]))
+    pub fn from_path(path: impl AsRef<path::Path>) -> DirIteratorBuilder {
+        DirIteratorBuilder {
+            path: path.as_ref().to_path_buf(),
+            ..Default::default()
+        }
+    }
+
+    /// Create from `DirIteratorBuilder`
+    fn from_builder(builder: DirIteratorBuilder) -> Result<Self> {
+        Ok(Self {
+            stack: vec![fs::read_dir(builder.path)?],
+            config: builder.config,
+        })
     }
 }
 
 impl Iterator for DirIterator {
-    type Item = Result<fs::DirEntry, io::Error>;
+    type Item = Result<fs::DirEntry>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let stack = &mut self.0;
         loop {
-            if let Some(it) = stack.last_mut() {
+            if let Some(it) = self.stack.last_mut() {
                 match it.next() {
-                    Some(Ok(entry)) => match entry.file_type() {
-                        Ok(file_type) => {
-                            // Push new item on stack when the file entry is a directory
-                            if file_type.is_dir() {
-                                match fs::read_dir(entry.path()) {
-                                    Ok(dir_entry) => stack.push(dir_entry),
-                                    Err(err) => return Some(Err(err)),
+                    Some(Ok(item)) => {
+                        match item.file_type() {
+                            Ok(file_type) => {
+                                // ignore folders if configured
+                                if self.config.ignore.iter().any(|ignore| {
+                                    ignore.is_match(item.file_name().as_encoded_bytes())
+                                }) {
+                                    continue;
                                 }
+                                // Push new item on stack when the file entry is a directory
+                                if file_type.is_dir() {
+                                    match fs::read_dir(item.path()) {
+                                        Ok(dir_entry) => self.stack.push(dir_entry),
+                                        Err(err) => return Some(Err(err)),
+                                    }
+                                }
+                                // return next item
+                                return Some(Ok(item));
                             }
-                            return Some(Ok(entry));
+                            // report error in item
+                            Err(err) => return Some(Err(err)),
                         }
-                        Err(err) => return Some(Err(err)),
-                    },
+                    }
                     None => {
-                        stack.pop()?;
+                        self.stack.pop()?;
                     }
                     err => return err,
                 }
@@ -80,5 +82,34 @@ impl Iterator for DirIterator {
                 return None;
             }
         }
+    }
+}
+
+#[derive(Default)]
+struct DirIteratorConfig {
+    /// If set do not scan directories which file name matches this wildcard
+    ignore: Vec<wc::Wildcard<'static>>,
+}
+
+#[derive(Default)]
+pub struct DirIteratorBuilder {
+    /// Path to scan
+    path: path::PathBuf,
+    /// Scanner configuration
+    config: DirIteratorConfig,
+}
+
+impl DirIteratorBuilder {
+    /// finish configuration and build a `DirIterator`
+    pub fn build(self) -> Result<impl Iterator<Item = DirEntry>> {
+        Ok(DirIterator::from_builder(self)?.flatten())
+    }
+
+    /// configures to ignore folders by wildcard
+    pub fn ignore(mut self, wildcard: &'static str) -> Self {
+        self.config
+            .ignore
+            .push(wc::Wildcard::new(wildcard.as_bytes()).expect("misformed wildcard"));
+        self
     }
 }

@@ -2,9 +2,10 @@
 fn read_cur() {
     use super::*;
 
-    let files = DirIterator::new()
+    let files = DirIterator::current()
+        .expect("could not retrieve current dir")
+        .build()
         .expect("path not found")
-        .flatten()
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
 
@@ -18,14 +19,13 @@ fn read_cur() {
 fn read_dir() {
     use super::*;
 
-    assert_eq!(
-        DirIterator::from_path("src")
-            .expect("path not found")
-            .flatten()
-            .map(|e| e.file_name().as_os_str().to_string_lossy().to_string())
-            .collect::<Vec<_>>(),
-        ["lib.rs", "test.rs"],
-    );
+    let mut dir = DirIterator::from_path("src")
+        .build()
+        .expect("path not found")
+        .map(|e| e.file_name().as_os_str().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    dir.sort();
+    assert_eq!(dir, ["filter.rs", "lib.rs", "test.rs"],);
 }
 
 #[cfg(feature = "wildcard")]
@@ -33,43 +33,64 @@ fn read_dir() {
 fn filter_dir() {
     use super::*;
 
-    assert_eq!(
-        DirIterator::from_path("src")
-            .expect("path not found")
-            .flatten()
-            .filter(wildcard("test.*"))
-            .map(|e| e.file_name().to_string_lossy().to_string())
-            .collect::<Vec<_>>(),
-        ["test.rs"],
-    );
+    let mut dir = DirIterator::from_path("src")
+        .build()
+        .expect("path not found")
+        .filter(filter::include("test.*"))
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    dir.sort();
+    assert_eq!(dir, ["test.rs"],);
 }
 
 #[test]
 fn read_paths() {
     use super::*;
 
-    let cur = env::current_dir().unwrap();
-    let files = DirIterator::new()
+    let files = DirIterator::current()
+        .expect("could not retrieve current dir")
+        .build()
         .expect("path not found")
-        .flatten()
         .map(|e| e.path())
         .collect::<Vec<_>>();
 
+    let cur = env::current_dir().unwrap();
     assert!(files.contains(&cur.join("src/test.rs")));
     assert!(files.contains(&cur.join("src/lib.rs")));
     assert!(files.contains(&cur.join("Cargo.toml")));
     assert!(files.contains(&cur.join("README.md")));
 }
 
+#[cfg(feature = "wildcard")]
 #[test]
 fn filter_dirs() {
     use super::*;
 
-    assert!(DirIterator::new()
+    let dir = DirIterator::current()
+        .expect("could not retrieve current dir")
+        .ignore("target")
+        .build()
         .expect("path not found")
-        .flatten()
-        .filter(dirs)
+        .filter(filter::dirs)
         .map(|e| e.file_name().to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .contains(&".github".to_string()));
+        .collect::<Vec<_>>();
+
+    assert!(dir.contains(&".github".to_string()));
+    assert!(!dir.contains(&"target".to_string()));
+    assert!(!dir.contains(&"*.o".to_string()));
+}
+
+mod readme {
+    use super::super::*;
+
+    #[test]
+    fn ignore_folders_when_scanning() {
+        DirIterator::current()
+            .expect("could not retrieve current dir")
+            // ignore target directory
+            .ignore("target")
+            .build()
+            .expect("path not found")
+            .for_each(|e| println!("{:?}", e.path()));
+    }
 }

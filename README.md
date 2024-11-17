@@ -48,7 +48,7 @@ You may use `DirIterator::try_build_current()` to get errors instead of panic.
 
 ### Filter Result with Wildcards
 
-Filter the result with wildcards by using `exclude(`*wildcard*`)` and which generates a filter.
+Filter the result with wildcards by using `exclude(`*wildcard*`)` which generates a filter.
 
 ```rs
 use dir_iterator::*;
@@ -63,7 +63,7 @@ fn main() {
 
 ### Ignore Folders When Scanning
 
-To prevent some directories from being scanned at all you ca use `ignore(`*wildcard*`)`
+To prevent some directories from being scanned at all you ca use `ignore(`*wildcard*`)`.
 
 ```rs
 use dir_iterator::*;
@@ -81,3 +81,5 @@ fn main() {
         .for_each(|e| println!("{:?}", e.path()));
 }
 ```
+
+Because `ignore()` parametrizes the following scan it must be placed in front of all `Iterator` trait methods and finished with `build()`.

@@ -59,9 +59,9 @@ fn filter_dirs() {
     use super::*;
 
     let dir = DirIterator::current()
+        .expect("path not found")
         .ignore("target")
         .build()
-        .expect("path not found")
         .filter(filter::dirs)
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
@@ -95,11 +95,14 @@ mod readme {
     #[test]
     fn ignore_folders_when_scanning() {
         DirIterator::current()
+            .expect("path not found")
             // ignore target directory
             .ignore("target")
+            // ignore all hidden directories
             .ignore(".*")
+            // build iterator
             .build()
-            .expect("path not found")
+            // exclude all hidden files
             .filter(exclude(".*"))
             .for_each(|e| println!("{:?}", e.path()));
     }

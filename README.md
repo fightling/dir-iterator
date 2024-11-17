@@ -45,13 +45,13 @@ use dir_iterator::*
 
 fn main() {
     DirIterator::current()
+        .expect("path not found")
         // ignore target directory
         .ignore("target")
         // ignore all hidden directories
         .ignore(".*")
         // build iterator
         .build()
-        .expect("path not found")
         // exclude all hidden files
         .filter(exclude(".*"))
         .for_each(|e| println!("{:?}", e.path()));

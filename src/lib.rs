@@ -11,6 +11,7 @@ use std::*;
 /// We deal with std::io::Error
 type Result<T> = io::Result<T>;
 
+#[derive(Default)]
 /// scan a directory recursively and access with iterator
 pub struct DirIterator {
     /// current subdirectory (last is current folder)
@@ -21,36 +22,33 @@ pub struct DirIterator {
 
 impl DirIterator {
     /// Return an iterator builder aiming on current directory
-    pub fn current() -> DirIteratorBuilder {
-        Self::from_path(env::current_dir().expect("could not retrieve current dir"))
+    pub fn current() -> Result<DirIteratorBuilder> {
+        Self::from_path(env::current_dir()?)
     }
 
-    /// Scan current directory and return result as iterator
+    /// Scan current directory and return iterator
     pub fn build_current() -> impl Iterator<Item = fs::DirEntry> {
-        Self::current().build().expect("path not found")
+        Self::current().expect("path not found").build()
     }
 
     /// Return an iterator builder aiming on given directory
-    pub fn from_path(path: impl AsRef<path::Path>) -> DirIteratorBuilder {
-        DirIteratorBuilder {
-            path: path.as_ref().to_path_buf(),
+    pub fn from_path(path: impl AsRef<path::Path>) -> Result<DirIteratorBuilder> {
+        Ok(DirIteratorBuilder(Self {
+            stack: vec![fs::read_dir(path)?],
             ..Default::default()
-        }
+        }))
     }
 
-    /// Scan given `path`` and return result as iterator
+    /// Scan given `path`` and return iterator
     pub fn build_from_path(
         path: impl AsRef<path::Path>,
     ) -> Result<impl Iterator<Item = fs::DirEntry>> {
-        Self::from_path(path).build()
+        Ok(Self::from_path(path)?.build())
     }
 
     /// Create from `DirIteratorBuilder`
-    fn from_builder(builder: DirIteratorBuilder) -> Result<Self> {
-        Ok(Self {
-            stack: vec![fs::read_dir(builder.path)?],
-            config: builder.config,
-        })
+    fn from_builder(builder: DirIteratorBuilder) -> Self {
+        builder.0
     }
 }
 
@@ -110,22 +108,18 @@ struct DirIteratorConfig {
 
 /// Builder for configuration of `DirIterator`
 #[derive(Default)]
-pub struct DirIteratorBuilder {
-    /// Path to scan
-    path: path::PathBuf,
-    /// Scanner configuration
-    config: DirIteratorConfig,
-}
+pub struct DirIteratorBuilder(DirIterator);
 
 impl DirIteratorBuilder {
     /// finish configuration and build a `DirIterator`
-    pub fn build(self) -> Result<impl Iterator<Item = fs::DirEntry>> {
-        Ok(DirIterator::from_builder(self)?.flatten())
+    pub fn build(self) -> impl Iterator<Item = fs::DirEntry> {
+        DirIterator::from_builder(self).flatten()
     }
 
     /// configures to ignore folders by wildcard
     pub fn ignore(mut self, wildcard: &'static str) -> Self {
-        self.config
+        self.0
+            .config
             .ignore
             .push(wc::Wildcard::new(wildcard.as_bytes()).expect("misformed wildcard"));
         self

@@ -22,13 +22,23 @@ pub struct DirIterator {
 
 impl DirIterator {
     /// Return an iterator builder aiming on current directory
-    pub fn current() -> Result<DirIteratorBuilder> {
+    pub fn current() -> DirIteratorBuilder {
+        Self::try_current().expect("invalid current directory")
+    }
+
+    /// Return an iterator builder aiming on current directory
+    pub fn try_current() -> Result<DirIteratorBuilder> {
         Self::from_path(env::current_dir()?)
     }
 
     /// Scan current directory and return iterator
     pub fn build_current() -> impl Iterator<Item = fs::DirEntry> {
-        Self::current().expect("path not found").build()
+        Self::current().build()
+    }
+
+    /// Scan current directory and return iterator
+    pub fn try_build_current() -> Result<impl Iterator<Item = fs::DirEntry>> {
+        Ok(Self::try_current()?.build())
     }
 
     /// Return an iterator builder aiming on given directory

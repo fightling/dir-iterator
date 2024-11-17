@@ -59,7 +59,6 @@ fn filter_dirs() {
     use super::*;
 
     let dir = DirIterator::current()
-        .expect("path not found")
         .ignore("target")
         .build()
         .filter(filter::dirs)
@@ -78,6 +77,16 @@ mod readme {
 
     #[test]
     fn read_a_directory_recursively() {
+        // read directory `src`
+        DirIterator::build_from_path("src")
+            // maybe maybe
+            .expect("path not found")
+            // print it out
+            .for_each(|e| println!("{:?}", e.file_name()));
+    }
+
+    #[test]
+    fn read_current_directory_recursively() {
         // build a new iterator starting in the current directory
         DirIterator::build_current()
             // print each file name
@@ -95,7 +104,6 @@ mod readme {
     #[test]
     fn ignore_folders_when_scanning() {
         DirIterator::current()
-            .expect("path not found")
             // ignore target directory
             .ignore("target")
             // ignore all hidden directories

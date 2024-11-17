@@ -2,10 +2,7 @@
 fn read_cur() {
     use super::*;
 
-    let files = DirIterator::current()
-        .expect("could not retrieve current dir")
-        .build()
-        .expect("path not found")
+    let files = DirIterator::build_current()
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
 
@@ -19,8 +16,7 @@ fn read_cur() {
 fn read_dir() {
     use super::*;
 
-    let mut dir = DirIterator::from_path("src")
-        .build()
+    let mut dir = DirIterator::build_from_path("src")
         .expect("path not found")
         .map(|e| e.file_name().as_os_str().to_string_lossy().to_string())
         .collect::<Vec<_>>();
@@ -33,8 +29,7 @@ fn read_dir() {
 fn filter_dir() {
     use super::*;
 
-    let mut dir = DirIterator::from_path("src")
-        .build()
+    let mut dir = DirIterator::build_from_path("src")
         .expect("path not found")
         .filter(filter::include("test.*"))
         .map(|e| e.file_name().to_string_lossy().to_string())
@@ -47,10 +42,7 @@ fn filter_dir() {
 fn read_paths() {
     use super::*;
 
-    let files = DirIterator::current()
-        .expect("could not retrieve current dir")
-        .build()
-        .expect("path not found")
+    let files = DirIterator::build_current()
         .map(|e| e.path())
         .collect::<Vec<_>>();
 
@@ -67,7 +59,6 @@ fn filter_dirs() {
     use super::*;
 
     let dir = DirIterator::current()
-        .expect("could not retrieve current dir")
         .ignore("target")
         .build()
         .expect("path not found")
@@ -81,16 +72,35 @@ fn filter_dirs() {
 }
 
 mod readme {
+    use filter::exclude;
+
     use super::super::*;
+
+    #[test]
+    fn read_a_directory_recursively() {
+        // build a new iterator starting in the current directory
+        DirIterator::build_current()
+            // print each file name
+            .for_each(|e| println!("{:?}", e.file_name()));
+    }
+
+    #[test]
+    fn filter_result_with_wildcards() {
+        DirIterator::build_current()
+            // filter all files which have extension `txt`
+            .filter(exclude("*.txt"))
+            .for_each(|e| println!("{:?}", e.file_name()));
+    }
 
     #[test]
     fn ignore_folders_when_scanning() {
         DirIterator::current()
-            .expect("could not retrieve current dir")
             // ignore target directory
             .ignore("target")
+            .ignore(".*")
             .build()
             .expect("path not found")
+            .filter(exclude(".*"))
             .for_each(|e| println!("{:?}", e.path()));
     }
 }

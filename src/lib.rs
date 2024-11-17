@@ -6,11 +6,10 @@ mod filter;
 #[cfg(test)]
 mod test;
 
-use fs::DirEntry;
 use std::*;
 
 /// We deal with std::io::Error
-type Result<T> = std::io::Result<T>;
+type Result<T> = io::Result<T>;
 
 /// scan a directory recursively and access with iterator
 pub struct DirIterator {
@@ -21,17 +20,29 @@ pub struct DirIterator {
 }
 
 impl DirIterator {
-    /// Scan current directory and return result as iterator
-    pub fn current() -> Result<DirIteratorBuilder> {
-        Ok(Self::from_path(env::current_dir()?))
+    /// Return an iterator builder aiming on current directory
+    pub fn current() -> DirIteratorBuilder {
+        Self::from_path(env::current_dir().expect("could not retrieve current dir"))
     }
 
-    /// Scan given `path`` and return result as iterator
+    /// Scan current directory and return result as iterator
+    pub fn build_current() -> impl Iterator<Item = fs::DirEntry> {
+        Self::current().build().expect("path not found")
+    }
+
+    /// Return an iterator builder aiming on given directory
     pub fn from_path(path: impl AsRef<path::Path>) -> DirIteratorBuilder {
         DirIteratorBuilder {
             path: path.as_ref().to_path_buf(),
             ..Default::default()
         }
+    }
+
+    /// Scan given `path`` and return result as iterator
+    pub fn build_from_path(
+        path: impl AsRef<path::Path>,
+    ) -> Result<impl Iterator<Item = fs::DirEntry>> {
+        Self::from_path(path).build()
     }
 
     /// Create from `DirIteratorBuilder`
@@ -48,9 +59,13 @@ impl Iterator for DirIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
+            // get current `read_dir()` result on the stack
             if let Some(it) = self.stack.last_mut() {
+                // get next item
                 match it.next() {
+                    // got one
                     Some(Ok(item)) => {
+                        // check file type
                         match item.file_type() {
                             Ok(file_type) => {
                                 // ignore folders if configured
@@ -74,6 +89,7 @@ impl Iterator for DirIterator {
                         }
                     }
                     None => {
+                        // finished with current `read_dir()` result
                         self.stack.pop()?;
                     }
                     err => return err,
@@ -85,12 +101,14 @@ impl Iterator for DirIterator {
     }
 }
 
+/// Configuration of a `DirIterator`
 #[derive(Default)]
 struct DirIteratorConfig {
     /// If set do not scan directories which file name matches this wildcard
     ignore: Vec<wc::Wildcard<'static>>,
 }
 
+/// Builder for configuration of `DirIterator`
 #[derive(Default)]
 pub struct DirIteratorBuilder {
     /// Path to scan
@@ -101,7 +119,7 @@ pub struct DirIteratorBuilder {
 
 impl DirIteratorBuilder {
     /// finish configuration and build a `DirIterator`
-    pub fn build(self) -> Result<impl Iterator<Item = DirEntry>> {
+    pub fn build(self) -> Result<impl Iterator<Item = fs::DirEntry>> {
         Ok(DirIterator::from_builder(self)?.flatten())
     }
 

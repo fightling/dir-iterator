@@ -18,16 +18,10 @@ cargo add dir-iterator
 use dir_iterator::*
 
 fn main() {
-    // create a new iterator starting in the current directory 
-    DirIterator::current()
-        // this is academic
-        .expect("could not retrieve current dir")
-        // build iterator
-        .build()
-        // you will get this error if path was not found
-        .expect("path not found")
+    // build a new iterator starting in the current directory
+    DirIterator::build_current()
         // print each file name
-        .for_each(|e| println!("{:?}",e.file_name()));
+        .for_each(|e| println!("{:?}", e.file_name()));
 }
 ```
 
@@ -37,13 +31,10 @@ fn main() {
 use dir_iterator::*
 
 fn main() {
-    DirIterator::current()
-        .expect("could not retrieve current dir")
-        .build()
-        .expect("path not found")
+    DirIterator::build_current()
         // filter all files which have extension `txt`
-        .filter(wildcard("*.txt"))
-        .for_each(|e| println!("{:?}",e.file_name()));
+        .filter(exclude("*.txt"))
+        .for_each(|e| println!("{:?}", e.file_name()));
 }
 ```
 
@@ -54,11 +45,15 @@ use dir_iterator::*
 
 fn main() {
     DirIterator::current()
-        .expect("could not retrieve current dir")
         // ignore target directory
         .ignore("target")
+        // ignore all hidden directories
+        .ignore(".*")
+        // build iterator
         .build()
         .expect("path not found")
+        // exclude all hidden files
+        .filter(exclude(".*"))
         .for_each(|e| println!("{:?}", e.path()));
 }
 ```
